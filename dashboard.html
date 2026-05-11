@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CarAdmin — Dashboard</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <!-- Sidebar injected by sidebar.js -->
+
+      <div class="main">
+        <div class="topbar">
+          <button class="menu-toggle" aria-label="Toggle menu">☰</button>
+          <div>
+            <h2>Dashboard</h2>
+            <p>Overview of your car listing platform</p>
+          </div>
+          <div></div>
+        </div>
+
+        <div class="content">
+          <!-- Overview Cards -->
+          <div class="cards-grid" id="cards-grid">
+            <div class="card">
+              <div class="card-value" id="total-users">—</div>
+              <div class="card-label">Total Users</div>
+            </div>
+            <div class="card">
+              <div class="card-value" id="total-listings">—</div>
+              <div class="card-label">Car Listings</div>
+            </div>
+            <div class="card">
+              <div class="card-value" id="total-reports">—</div>
+              <div class="card-label">Reports</div>
+            </div>
+            <div class="card">
+              <div class="card-value" id="total-inquiries">—</div>
+              <div class="card-label">Inquiries</div>
+            </div>
+          </div>
+
+          <!-- Recent Listings -->
+          <div class="section-header">
+            <h3>Recent Car Listings</h3>
+            <a href="listings.html" class="btn btn-ghost btn-sm">View All →</a>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Car</th>
+                  <th>Lister</th>
+                  <th>Price</th>
+                  <th>Location</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="recent-listings">
+                <tr>
+                  <td colspan="5">
+                    <div class="loading">
+                      <div class="spinner"></div>
+                      Loading...
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script>
+      requireAdmin(function (user) {
+        renderSidebar("dashboard");
+        setAdminName(user);
+        loadCounts();
+        loadRecentListings();
+      });
+
+      function loadCounts() {
+        db.ref("users").once("value", function (s) {
+          document.getElementById("total-users").textContent = s.exists()
+            ? Object.keys(s.val()).length
+            : 0;
+        });
+        db.ref("carListing").once("value", function (s) {
+          document.getElementById("total-listings").textContent = s.exists()
+            ? Object.keys(s.val()).length
+            : 0;
+        });
+        db.ref("carListingReports").once("value", function (s) {
+          document.getElementById("total-reports").textContent = s.exists()
+            ? Object.keys(s.val()).length
+            : 0;
+        });
+        db.ref("carInquiries").once("value", function (s) {
+          document.getElementById("total-inquiries").textContent = s.exists()
+            ? Object.keys(s.val()).length
+            : 0;
+        });
+      }
+
+      function loadRecentListings() {
+        db.ref("carListing")
+          .limitToLast(5)
+          .once("value", function (snap) {
+            const tbody = document.getElementById("recent-listings");
+            if (!snap.exists()) {
+              tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🚗</div>No listings yet.</div></td></tr>`;
+              return;
+            }
+            const items = [];
+            snap.forEach(function (child) {
+              items.unshift(child.val());
+            });
+            tbody.innerHTML = items
+              .map(function (c) {
+                return `<tr>
+          <td><img class="car-thumb" src="${c.carImage || ""}" onerror="this.src=''" alt="" /> ${esc(c.carName)}</td>
+          <td>${esc(c.carListerName)}</td>
+          <td>₱${esc(c.carPrice)}</td>
+          <td>${esc(c.carLocation)}</td>
+          <td>${esc(c.datePosted)}</td>
+        </tr>`;
+              })
+              .join("");
+          });
+      }
+
+      function esc(str) {
+        if (!str) return "—";
+        return String(str).replace(/[&<>"']/g, function (c) {
+          return {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          }[c];
+        });
+      }
+    </script>
+  </body>
+</html>
